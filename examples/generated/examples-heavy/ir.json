@@ -1,0 +1,25 @@
+{
+  "name": "examples-heavy",
+  "title": "Examples Heavy",
+  "description": "Use this skill when a verbose document has too many examples.",
+  "triggers": [
+    "examples dominate a skill and most of them repeat the same idea."
+  ],
+  "rules": [
+    "MUST keep examples that define a required output format.",
+    "SHOULD remove decorative examples that do not add new behavior."
+  ],
+  "workflow": [
+    "find examples that encode behavior.",
+    "collapse repeated examples.",
+    "keep the shortest useful schema."
+  ],
+  "examples": [
+    "`feat(parser): add token budget`.",
+    "`fix(cli): preserve code blocks`.",
+    "`docs(readme): explain installer`."
+  ],
+  "references": [],
+  "omissions": [],
+  "sourceName": "examples-heavy/SKILL.md"
+}

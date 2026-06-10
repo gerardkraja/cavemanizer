@@ -1,0 +1,27 @@
+{
+  "sourceName": "examples-heavy/SKILL.md",
+  "provider": "fixture",
+  "modes": [
+    "caveman"
+  ],
+  "counts": {
+    "source": {
+      "bytes": 777,
+      "chars": 777,
+      "estimatedTokens": 195
+    },
+    "caveman": {
+      "bytes": 576,
+      "chars": 576,
+      "estimatedTokens": 144
+    }
+  },
+  "savings": {
+    "caveman": 25.9
+  },
+  "validation": {
+    "caveman": {
+      "warnings": []
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "sourceName": "cross-file/SKILL.md",
+  "provider": "fixture",
+  "modes": [
+    "caveman"
+  ],
+  "counts": {
+    "source": {
+      "bytes": 602,
+      "chars": 602,
+      "estimatedTokens": 151
+    },
+    "caveman": {
+      "bytes": 575,
+      "chars": 575,
+      "estimatedTokens": 144
+    }
+  },
+  "savings": {
+    "caveman": 4.5
+  },
+  "validation": {
+    "caveman": {
+      "warnings": []
+    }
+  }
+}

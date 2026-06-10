@@ -1,0 +1,22 @@
+{
+  "name": "cross-file",
+  "title": "Cross File",
+  "description": "Use this skill when a skill references extra files.",
+  "triggers": [
+    "the main instruction file depends on local references or templates."
+  ],
+  "rules": [
+    "The compressor must preserve resource paths so the agent can still load the right files later.",
+    "MUST preserve `references/checklist.md`, `scripts/verify.js`, and `assets/template.md`.",
+    "MUST read referenced files only when needed; do not bulk-load unrelated resources."
+  ],
+  "workflow": [
+    "identify relative references.",
+    "keep the references exact.",
+    "summarize when each referenced file should be opened."
+  ],
+  "examples": [],
+  "references": [],
+  "omissions": [],
+  "sourceName": "cross-file/SKILL.md"
+}

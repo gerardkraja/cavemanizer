@@ -1,0 +1,18 @@
+{
+  "name": "cavemanizer",
+  "version": "0.1.0",
+  "description": "LLM-backed compressor for agent skills and always-loaded context.",
+  "type": "module",
+  "bin": {
+    "cavemanizer": "./bin/cavemanizer.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "generate:examples": "node bin/cavemanizer.js compress examples/fixtures --out-dir examples/generated --provider fixture --mode caveman --budget 120",
+    "check": "npm test && node bin/cavemanizer.js check examples/fixtures --out-dir examples/generated --provider fixture --mode caveman --budget 120"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

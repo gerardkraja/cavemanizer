@@ -1,0 +1,25 @@
+{
+  "name": "hard-gate",
+  "title": "Hard Gate",
+  "description": "Use this skill when a task has an explicit approval gate.",
+  "triggers": [
+    "implementation must stop until a user approves a design, plan, or risky operation."
+  ],
+  "rules": [
+    "Use this skill when implementation must stop until a user approves a design, plan, or risky operation.",
+    "MUST present the design before writing production code.",
+    "MUST NOT edit files before the user approves the design.",
+    "If the request involves deleting files, you MUST ask for explicit confirmation before running `rm`."
+  ],
+  "workflow": [
+    "restate the goal.",
+    "present the proposed design.",
+    "wait for approval.",
+    "execute only the approved work.",
+    "verify and report the result."
+  ],
+  "examples": [],
+  "references": [],
+  "omissions": [],
+  "sourceName": "hard-gate/SKILL.md"
+}

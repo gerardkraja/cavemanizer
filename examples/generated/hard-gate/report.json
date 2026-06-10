@@ -1,0 +1,27 @@
+{
+  "sourceName": "hard-gate/SKILL.md",
+  "provider": "fixture",
+  "modes": [
+    "caveman"
+  ],
+  "counts": {
+    "source": {
+      "bytes": 665,
+      "chars": 665,
+      "estimatedTokens": 167
+    },
+    "caveman": {
+      "bytes": 490,
+      "chars": 490,
+      "estimatedTokens": 123
+    }
+  },
+  "savings": {
+    "caveman": 26.3
+  },
+  "validation": {
+    "caveman": {
+      "warnings": []
+    }
+  }
+}

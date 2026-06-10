@@ -1,0 +1,25 @@
+{
+  "name": "protected-content",
+  "title": "Protected Content",
+  "description": "Use this skill when commands, paths, URLs, and code blocks must survive rewriting.",
+  "triggers": [
+    "a document contains exact syntax that must not be changed."
+  ],
+  "rules": [
+    "Use this skill when a document contains exact syntax that must not be changed.",
+    "MUST preserve every code block byte-for-byte.",
+    "MUST NOT rewrite JSON examples, shell flags, or exact file paths."
+  ],
+  "workflow": [
+    "locate protected content.",
+    "rewrite only prose around it.",
+    "compare protected content against the original."
+  ],
+  "examples": [],
+  "references": [
+    "https://example.com/protected-content",
+    "/Users/example/project/AGENTS.md"
+  ],
+  "omissions": [],
+  "sourceName": "protected-content/SKILL.md"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "simple-workflow",
+  "title": "Simple Workflow",
+  "description": "Use this skill when a repository change needs a small repeatable workflow.",
+  "triggers": [
+    "you need to make a small repository change and want to keep the work organized."
+  ],
+  "rules": [
+    "MUST inspect the current files before editing."
+  ],
+  "workflow": [
+    "read the relevant files.",
+    "make the smallest useful change.",
+    "run the relevant verification command.",
+    "summarize what changed."
+  ],
+  "examples": [],
+  "references": [],
+  "omissions": [],
+  "sourceName": "simple-workflow/SKILL.md"
+}

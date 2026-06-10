@@ -1,0 +1,27 @@
+{
+  "sourceName": "protected-content/SKILL.md",
+  "provider": "fixture",
+  "modes": [
+    "caveman"
+  ],
+  "counts": {
+    "source": {
+      "bytes": 794,
+      "chars": 794,
+      "estimatedTokens": 199
+    },
+    "caveman": {
+      "bytes": 693,
+      "chars": 693,
+      "estimatedTokens": 174
+    }
+  },
+  "savings": {
+    "caveman": 12.7
+  },
+  "validation": {
+    "caveman": {
+      "warnings": []
+    }
+  }
+}

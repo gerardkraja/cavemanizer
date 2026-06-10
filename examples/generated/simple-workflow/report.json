@@ -1,0 +1,27 @@
+{
+  "sourceName": "simple-workflow/SKILL.md",
+  "provider": "fixture",
+  "modes": [
+    "caveman"
+  ],
+  "counts": {
+    "source": {
+      "bytes": 581,
+      "chars": 581,
+      "estimatedTokens": 146
+    },
+    "caveman": {
+      "bytes": 407,
+      "chars": 407,
+      "estimatedTokens": 102
+    }
+  },
+  "savings": {
+    "caveman": 29.9
+  },
+  "validation": {
+    "caveman": {
+      "warnings": []
+    }
+  }
+}
