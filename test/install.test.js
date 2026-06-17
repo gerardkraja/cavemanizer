@@ -9,7 +9,9 @@ import { installSkills, planInstall } from '../src/install.js';
 async function createSkillRoot(root) {
   const skillRoot = path.join(root, 'skills');
   await mkdir(path.join(skillRoot, 'cavemanizer'), { recursive: true });
+  await mkdir(path.join(skillRoot, 'understanding-caveman'), { recursive: true });
   await writeFile(path.join(skillRoot, 'cavemanizer', 'SKILL.md'), '# Cavemanizer\n');
+  await writeFile(path.join(skillRoot, 'understanding-caveman', 'SKILL.md'), '# Understanding Caveman\n');
   return skillRoot;
 }
 
@@ -26,8 +28,10 @@ test('planInstall reports target files without writing them', async () => {
 
   assert.ok(plan.operations.some((op) => op.target.endsWith('.codex/skills/cavemanizer/SKILL.md')));
   assert.ok(plan.operations.some((op) => op.target.endsWith('.claude/skills/cavemanizer/SKILL.md')));
-  assert.equal(plan.operations.length, 2);
-  assert.ok(plan.operations.every((op) => op.skill === 'cavemanizer'));
+  assert.ok(plan.operations.some((op) => op.target.endsWith('.codex/skills/understanding-caveman/SKILL.md')));
+  assert.ok(plan.operations.some((op) => op.target.endsWith('.claude/skills/understanding-caveman/SKILL.md')));
+  assert.equal(plan.operations.length, 4);
+  assert.deepEqual([...new Set(plan.operations.map((op) => op.skill))], ['cavemanizer', 'understanding-caveman']);
 });
 
 test('installSkills copies skills into selected agent directories', async () => {
@@ -41,7 +45,9 @@ test('installSkills copies skills into selected agent directories', async () => 
     skillRoot
   });
 
-  assert.equal(result.operations.length, 1);
+  assert.equal(result.operations.length, 2);
   const installed = await readFile(path.join(home, '.codex', 'skills', 'cavemanizer', 'SKILL.md'), 'utf8');
+  const installedHelper = await readFile(path.join(home, '.codex', 'skills', 'understanding-caveman', 'SKILL.md'), 'utf8');
   assert.equal(installed, '# Cavemanizer\n');
+  assert.equal(installedHelper, '# Understanding Caveman\n');
 });

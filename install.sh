@@ -9,6 +9,10 @@ provider=()
 model=()
 budget=()
 out_dir=()
+schedule=0
+cron=()
+every=()
+backend=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -44,8 +48,24 @@ while [[ $# -gt 0 ]]; do
       out_dir=(--out-dir "$2")
       shift 2
       ;;
+    --schedule)
+      schedule=1
+      shift
+      ;;
+    --cron)
+      cron=(--cron "$2")
+      shift 2
+      ;;
+    --every)
+      every=(--every "$2")
+      shift 2
+      ;;
+    --backend)
+      backend=(--backend "$2")
+      shift 2
+      ;;
     --help|-h)
-      echo "Usage: ./install.sh [--agent codex|claude] [--sync] [--activate] [--provider fixture|openai] [--model name] [--budget tokens] [--out-dir dir] [--dry-run]"
+      echo "Usage: ./install.sh [--agent codex|claude] [--sync] [--activate] [--schedule] [--provider fixture|openai] [--model name] [--budget tokens] [--out-dir dir] [--every daily|--cron '0 3 * * *'] [--backend auto|launchd|systemd|schtasks|cron] [--dry-run]"
       exit 0
       ;;
     *)
@@ -57,3 +77,7 @@ done
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 node "$root/bin/cavemanizer.js" install "$root" --agent "$agent" "${sync[@]}" "${activate[@]}" "${provider[@]}" "${model[@]}" "${budget[@]}" "${out_dir[@]}" "${dry_run[@]}"
+
+if [[ "$schedule" -eq 1 ]]; then
+  node "$root/bin/cavemanizer.js" schedule install --agent "$agent" "${activate[@]}" "${provider[@]}" "${model[@]}" "${budget[@]}" "${out_dir[@]}" "${cron[@]}" "${every[@]}" "${backend[@]}" "${dry_run[@]}"
+fi

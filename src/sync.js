@@ -7,6 +7,7 @@ import { readActivationManifest } from './activation.js';
 import { countText } from './ir.js';
 import { isActivatedSkill, isCreatorCompact } from './markers.js';
 import { discoverRealSkills } from './realSkills.js';
+import { recordSyncStats } from './stats.js';
 
 const MANIFEST_FILE = '.cavemanizer-manifest.json';
 
@@ -152,7 +153,7 @@ export async function syncCavemanizedSkills(options = {}) {
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   }
 
-  return {
+  const result = {
     ok: failures.length === 0,
     agent,
     outDir,
@@ -162,6 +163,8 @@ export async function syncCavemanizedSkills(options = {}) {
     summary: finalizeSummary(summary),
     manifest
   };
+  if (!check && !dryRun) await recordSyncStats({ home, result });
+  return result;
 }
 
 function expectedOutputs(result) {

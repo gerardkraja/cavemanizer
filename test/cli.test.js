@@ -81,6 +81,8 @@ test('CLI exposes a minimal command surface', () => {
 
   assert.equal(help.status, 0, help.stderr || help.stdout);
   assert.match(help.stdout, /sync/);
+  assert.match(help.stdout, /stats/);
+  assert.match(help.stdout, /schedule install/);
   assert.match(help.stdout, /mark-compact/);
   assert.doesNotMatch(help.stdout, /\bdiff\b/);
   assert.doesNotMatch(help.stdout, /\bpreprocess\b/);

@@ -6,6 +6,8 @@ import { checkPath, compressPath } from './compress.js';
 import { installSkills, planInstall } from './install.js';
 import { markCompactSource, unmarkCompactSource } from './markers.js';
 import { discoverRealSkills } from './realSkills.js';
+import { installSchedule, planScheduleInstall, runDueSchedule, scheduleStatus, uninstallSchedule } from './schedule.js';
+import { readCavemanizerStats } from './stats.js';
 import { syncCavemanizedSkills } from './sync.js';
 
 export async function main(argv = process.argv.slice(2), io = process) {
@@ -21,8 +23,10 @@ export async function main(argv = process.argv.slice(2), io = process) {
     if (command === 'check') return await checkCommand(rest, io);
     if (command === 'install') return await installCommand(rest, io);
     if (command === 'sync') return await syncCommand(rest, io);
+    if (command === 'stats') return await statsCommand(rest, io);
     if (command === 'activate') return await activateCommand(rest, io);
     if (command === 'restore') return await restoreCommand(rest, io);
+    if (command === 'schedule') return await scheduleCommand(rest, io);
     if (command === 'mark-compact') return await compactMarkerCommand(rest, io, true);
     if (command === 'unmark-compact') return await compactMarkerCommand(rest, io, false);
     if (command === 'list-real-skills') return await listRealSkillsCommand(rest, io);
@@ -118,6 +122,22 @@ async function syncCommand(args, io) {
   return ok ? 0 : 1;
 }
 
+async function statsCommand(args, io) {
+  const options = parseOptions(args);
+  const home = options.home ? path.resolve(options.home) : process.env.HOME;
+  if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  const agents = collectAgents(options.agent, 'claude');
+  for (const agent of agents) {
+    const stats = await readCavemanizerStats({
+      agent,
+      home,
+      outDir: syncOutDir(options.outDir, home, agent, agents.length)
+    });
+    io.stdout.write(formatStats(stats));
+  }
+  return 0;
+}
+
 async function activateCommand(args, io) {
   const options = parseOptions(args);
   const home = options.home ? path.resolve(options.home) : process.env.HOME;
@@ -138,6 +158,79 @@ async function restoreCommand(args, io) {
     io.stdout.write(formatActivationSummary(result, 'restore'));
     for (const failure of result.failures) io.stderr.write(`${failure}\n`);
     if (!result.ok) ok = false;
+  }
+  return ok ? 0 : 1;
+}
+
+async function scheduleCommand(args, io) {
+  const [subcommand, ...rest] = args;
+  if (!subcommand) throw new Error('schedule requires install, status, uninstall, or run-due');
+  if (subcommand === 'install') return await scheduleInstallCommand(rest, io);
+  if (subcommand === 'status') return await scheduleStatusCommand(rest, io);
+  if (subcommand === 'uninstall') return await scheduleUninstallCommand(rest, io);
+  if (subcommand === 'run-due') return await scheduleRunDueCommand(rest, io);
+  throw new Error(`Unknown schedule command: ${subcommand}`);
+}
+
+async function scheduleInstallCommand(args, io) {
+  const options = parseOptions(args);
+  const home = options.home ? path.resolve(options.home) : process.env.HOME;
+  if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  const agents = collectAgents(options.agent, 'claude');
+  const dryRun = Boolean(options.dryRun);
+
+  for (const agent of agents) {
+    const scheduleOptions = scheduleCommandOptions(options, agent, agents, home);
+    const result = dryRun ? planScheduleInstall(scheduleOptions) : await installSchedule(scheduleOptions);
+    io.stdout.write(formatScheduleInstallSummary(result, dryRun));
+  }
+  return 0;
+}
+
+async function scheduleStatusCommand(args, io) {
+  const options = parseOptions(args);
+  const home = options.home ? path.resolve(options.home) : process.env.HOME;
+  if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  const agents = collectAgents(options.agent, 'claude');
+
+  for (const agent of agents) {
+    const result = await scheduleStatus({ agent, home, platform: options.platform });
+    io.stdout.write(formatScheduleStatus(result));
+  }
+  return 0;
+}
+
+async function scheduleUninstallCommand(args, io) {
+  const options = parseOptions(args);
+  const home = options.home ? path.resolve(options.home) : process.env.HOME;
+  if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  const agents = collectAgents(options.agent, 'claude');
+  const dryRun = Boolean(options.dryRun);
+
+  for (const agent of agents) {
+    const result = await uninstallSchedule({
+      agent,
+      home,
+      backend: options.backend ?? 'auto',
+      platform: options.platform,
+      dryRun
+    });
+    io.stdout.write(formatScheduleUninstallSummary(result, dryRun));
+  }
+  return 0;
+}
+
+async function scheduleRunDueCommand(args, io) {
+  const options = parseOptions(args);
+  const home = options.home ? path.resolve(options.home) : process.env.HOME;
+  if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  const agents = collectAgents(options.agent, 'claude');
+  let ok = true;
+
+  for (const agent of agents) {
+    const result = await runDueSchedule({ agent, home, platform: options.platform });
+    io.stdout.write(formatScheduleRunDueSummary(result));
+    if (result.ran && !result.ok) ok = false;
   }
   return ok ? 0 : 1;
 }
@@ -259,6 +352,25 @@ async function runActivationForAgents(options, agents, home, io) {
   return ok;
 }
 
+function scheduleCommandOptions(options, agent, agents, home) {
+  return {
+    agent,
+    home,
+    backend: options.backend ?? 'auto',
+    platform: options.platform,
+    cron: options.cron,
+    every: options.every,
+    providerName: options.provider ?? 'fixture',
+    model: options.model,
+    budget: options.budget ? Number(options.budget) : null,
+    activate: Boolean(options.activate),
+    outDir: syncOutDir(options.outDir, home, agent, agents.length),
+    nodePath: process.execPath,
+    cliPath: path.resolve(process.argv[1] ?? 'bin/cavemanizer.js'),
+    dryRun: Boolean(options.dryRun)
+  };
+}
+
 function syncOutDir(outDirOption, home, agent, agentCount) {
   if (outDirOption) {
     const base = path.resolve(outDirOption);
@@ -293,6 +405,34 @@ function formatSyncSummary(result) {
   return `${lines.join('\n')}\n`;
 }
 
+function formatStats(stats) {
+  const current = stats.current;
+  const history = stats.history;
+  const lines = [`${stats.agent} stats`, '', 'Current compact skill set:'];
+  lines.push(`  skills: ${current.skills}`);
+  if (current.creatorCompactSkills) lines.push(`  creator-compact skills: ${current.creatorCompactSkills}`);
+  lines.push(`  normal: ${current.sourceEstimatedTokens} est tokens`);
+  lines.push(`  compact: ${current.cavemanEstimatedTokens} est tokens`);
+  lines.push(
+    `  saved per full skill load: ${current.estimatedTokensSaved} est tokens (${current.byteSavings}% bytes)`
+  );
+  if (current.generatedAt) lines.push(`  generated at: ${current.generatedAt}`);
+
+  lines.push('', 'History:');
+  lines.push(`  successful syncs: ${history.successfulSyncs}`);
+  if (history.firstSyncAt) lines.push(`  first sync: ${history.firstSyncAt}`);
+  if (history.lastSyncAt) lines.push(`  last sync: ${history.lastSyncAt}`);
+  if (history.coveredMs) lines.push(`  covered time: ${formatDuration(history.coveredMs)}`);
+  lines.push(`  generated: ${history.generated}`);
+  lines.push(`  updated: ${history.updated}`);
+  lines.push(`  skipped: ${history.skipped}`);
+  lines.push(`  adopted creator-compact: ${history.adopted}`);
+  lines.push(`  removed: ${history.removed}`);
+  lines.push(`  cumulative saved across sync snapshots: ${history.cumulativeEstimatedTokensSaved} est tokens`);
+  lines.push('  note: this is not actual LLM session usage; agents do not report skill-load counts.');
+  return `${lines.join('\n')}\n`;
+}
+
 function formatActivationSummary(result, label) {
   const lines = [`${result.agent} ${label}`];
   if (!result.operations.length) {
@@ -309,6 +449,57 @@ function formatTokenDelta(summary) {
   return 'saved 0 est tokens';
 }
 
+function formatDuration(milliseconds) {
+  const seconds = Math.floor(milliseconds / 1000);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const parts = [];
+  if (days) parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
+  if (minutes || !parts.length) parts.push(`${minutes}m`);
+  return parts.join(' ');
+}
+
+function formatScheduleInstallSummary(result, dryRun) {
+  const lines = [`${result.agent} schedule ${dryRun ? 'plan' : 'install'} (${result.backend})`];
+  lines.push(`  cron ${result.schedule.cron}`);
+  for (const file of result.files) lines.push(`  write ${file.path}`);
+  for (const command of result.commands) lines.push(`  run ${command.command} ${command.args.join(' ')}`.trimEnd());
+  if (result.crontabBlock) lines.push('  update crontab block');
+  return `${lines.join('\n')}\n`;
+}
+
+function formatScheduleUninstallSummary(result, dryRun) {
+  const lines = [`${result.agent} schedule ${dryRun ? 'uninstall plan' : 'uninstall'} (${result.backend})`];
+  for (const command of result.commands) lines.push(`  run ${command.command} ${command.args.join(' ')}`.trimEnd());
+  for (const file of result.filesToRemove) lines.push(`  remove ${file}`);
+  if (result.backend === 'cron') lines.push('  remove crontab block');
+  return `${lines.join('\n')}\n`;
+}
+
+function formatScheduleStatus(result) {
+  const lines = [`${result.agent} schedule ${result.installed ? 'installed' : 'not installed'}`];
+  if (result.config) {
+    lines.push(`  backend ${result.config.backend}`);
+    lines.push(`  cron ${result.config.cron}`);
+    lines.push(`  provider ${result.config.provider}`);
+    lines.push(`  activate ${result.config.activate}`);
+  }
+  if (result.state?.lastSuccessAt) lines.push(`  last success ${result.state.lastSuccessAt}`);
+  if (result.state?.lastFailureAt) lines.push(`  last failure ${result.state.lastFailureAt}`);
+  return `${lines.join('\n')}\n`;
+}
+
+function formatScheduleRunDueSummary(result) {
+  if (!result.due) return `${result.agent} schedule not due\n`;
+  if (!result.ran) return `${result.agent} schedule due but not run\n`;
+  const lines = [`${result.agent} scheduled sync ${result.ok ? 'ok' : 'failed'}`];
+  if (result.sync) lines.push(formatSyncSummary(result.sync).trimEnd());
+  if (result.activation) lines.push(formatActivationSummary(result.activation, 'activate').trimEnd());
+  return `${lines.join('\n')}\n`;
+}
+
 function helpText() {
   return `cavemanizer
 
@@ -317,8 +508,13 @@ Commands:
   check <file-or-fixtures-dir> --out-dir <dir> [--provider fixture|openai] [--mode caveman]
   install [repo-root] [--agent codex] [--agent claude] [--sync] [--activate] [--provider fixture|openai] [--dry-run]
   sync [--agent claude] [--out-dir <dir>] [--provider fixture|openai] [--activate] [--check] [--dry-run]
+  stats [--agent claude] [--out-dir <dir>]
   activate [--agent claude] [--out-dir <dir>] [--dry-run]
   restore [--agent claude] [--dry-run]
+  schedule install [--agent claude] [--provider fixture|openai] [--budget tokens] [--activate] [--every daily|--cron "0 3 * * *"] [--backend auto|launchd|systemd|schtasks|cron] [--dry-run]
+  schedule status [--agent claude]
+  schedule uninstall [--agent claude] [--backend auto|launchd|systemd|schtasks|cron] [--dry-run]
+  schedule run-due [--agent claude]
   mark-compact <SKILL.md>
   unmark-compact <SKILL.md>
   list-real-skills [--home <path>]
