@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 import { activateCavemanizedSkills, restoreActivatedSkills } from './activation.js';
 import { checkPath, compressPath } from './compress.js';
+import { loadCavemanizerEnv } from './env.js';
 import { installSkills, planInstall } from './install.js';
 import { markCompactSource, unmarkCompactSource } from './markers.js';
 import { discoverRealSkills } from './realSkills.js';
@@ -41,6 +42,7 @@ export async function main(argv = process.argv.slice(2), io = process) {
 
 async function compressCommand(args, io) {
   const options = parseOptions(args);
+  await loadEnvForOptions(options);
   const input = options.positionals[0];
   if (!input) throw new Error('compress requires an input file or fixture directory');
   const outDir = options.outDir ?? 'dist/cavemanizer';
@@ -61,6 +63,7 @@ async function compressCommand(args, io) {
 
 async function checkCommand(args, io) {
   const options = parseOptions(args);
+  await loadEnvForOptions(options);
   const input = options.positionals[0];
   if (!input) throw new Error('check requires an input file or fixture directory');
   const outDir = options.outDir ?? 'dist/cavemanizer';
@@ -88,6 +91,7 @@ async function installCommand(args, io) {
   const skillRoot = path.resolve(options.skillRoot ?? path.join(repoRoot, 'skills'));
   const home = options.home ? path.resolve(options.home) : process.env.HOME;
   if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  await loadEnvForHome(home);
 
   const installOptions = { agents, home, skillRoot };
   if (options.dryRun) {
@@ -117,6 +121,7 @@ async function syncCommand(args, io) {
   const options = parseOptions(args);
   const home = options.home ? path.resolve(options.home) : process.env.HOME;
   if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  await loadEnvForHome(home);
   const agents = collectAgents(options.agent, 'claude');
   const ok = await runSyncForAgents(options, agents, home, io);
   return ok ? 0 : 1;
@@ -176,6 +181,7 @@ async function scheduleInstallCommand(args, io) {
   const options = parseOptions(args);
   const home = options.home ? path.resolve(options.home) : process.env.HOME;
   if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  await loadEnvForHome(home);
   const agents = collectAgents(options.agent, 'claude');
   const dryRun = Boolean(options.dryRun);
 
@@ -224,6 +230,7 @@ async function scheduleRunDueCommand(args, io) {
   const options = parseOptions(args);
   const home = options.home ? path.resolve(options.home) : process.env.HOME;
   if (!home) throw new Error('Cannot determine HOME. Pass --home <path>.');
+  await loadEnvForHome(home);
   const agents = collectAgents(options.agent, 'claude');
   let ok = true;
 
@@ -297,6 +304,14 @@ function modesFromOption(mode = 'caveman') {
 function collectAgents(agentOption, defaultAgent = 'codex') {
   if (!agentOption) return [defaultAgent];
   return Array.isArray(agentOption) ? agentOption : [agentOption];
+}
+
+async function loadEnvForOptions(options) {
+  await loadEnvForHome(options.home ? path.resolve(options.home) : process.env.HOME);
+}
+
+async function loadEnvForHome(home) {
+  await loadCavemanizerEnv({ home });
 }
 
 async function runSyncForAgents(options, agents, home, io) {

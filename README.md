@@ -35,6 +35,29 @@ These numbers use the repo's lightweight estimated-token heuristic, not provider
 tokenizer output. Full notes and reproduction commands live in
 [docs/real-world-evals.md](docs/real-world-evals.md).
 
+## API Key Setup
+
+For OpenAI-backed compression, set the key once:
+
+```bash
+mkdir -p ~/.cavemanizer
+printf 'export OPENAI_API_KEY=...\n' > ~/.cavemanizer/env
+chmod 600 ~/.cavemanizer/env
+```
+
+Cavemanizer loads `~/.cavemanizer/env` before commands that use providers. A
+normal shell environment variable still wins, so temporary overrides work:
+
+```bash
+OPENAI_API_KEY=temporary-key node bin/cavemanizer.js sync --agent claude --provider openai
+```
+
+On Windows, use `%USERPROFILE%\.cavemanizer\env.cmd`:
+
+```bat
+set OPENAI_API_KEY=...
+```
+
 ## What It Does
 
 Cavemanizer gives skill-heavy agent workflows a source/generated split:
@@ -84,10 +107,6 @@ and Cavemanizer keeps the compact copies fresh in the background.
 Install a daily scheduled sync:
 
 ```bash
-mkdir -p ~/.cavemanizer
-printf 'export OPENAI_API_KEY=...\n' > ~/.cavemanizer/env
-chmod 600 ~/.cavemanizer/env
-
 node bin/cavemanizer.js schedule install \
   --agent claude \
   --provider openai \
@@ -136,10 +155,6 @@ Scheduled POSIX runs source `~/.cavemanizer/env` before running. On Windows, use
 The installer can set this up in one command:
 
 ```bash
-set -a
-. ~/.cavemanizer/env
-set +a
-
 ./install.sh \
   --agent claude \
   --sync \
@@ -205,7 +220,7 @@ Install into Claude, compress installed Claude skills, and activate the compact
 versions:
 
 ```bash
-OPENAI_API_KEY=... ./install.sh --agent claude --sync --activate --provider openai --budget 800
+./install.sh --agent claude --sync --activate --provider openai --budget 800
 ```
 
 Supported local skill targets:
@@ -224,7 +239,7 @@ Bundled skills:
 Generate compact copies without touching live skills:
 
 ```bash
-OPENAI_API_KEY=... node bin/cavemanizer.js sync \
+node bin/cavemanizer.js sync \
   --agent claude \
   --provider openai \
   --budget 800
@@ -239,7 +254,7 @@ Default output:
 Check whether generated skills are current:
 
 ```bash
-OPENAI_API_KEY=... node bin/cavemanizer.js sync \
+node bin/cavemanizer.js sync \
   --agent claude \
   --provider openai \
   --budget 800 \
@@ -249,7 +264,7 @@ OPENAI_API_KEY=... node bin/cavemanizer.js sync \
 Generate and activate in one step:
 
 ```bash
-OPENAI_API_KEY=... node bin/cavemanizer.js sync \
+node bin/cavemanizer.js sync \
   --agent claude \
   --provider openai \
   --budget 800 \
@@ -305,7 +320,7 @@ skill.
 Compress a skill or fixture directory:
 
 ```bash
-OPENAI_API_KEY=... node bin/cavemanizer.js compress skills \
+node bin/cavemanizer.js compress skills \
   --out-dir dist/openai \
   --provider openai \
   --mode caveman
