@@ -19,12 +19,13 @@ test('planInstall reports target files without writing them', async () => {
   const skillRoot = await createSkillRoot(root);
 
   const plan = await planInstall({
-    agents: ['codex', 'generic'],
+    agents: ['codex', 'claude'],
     home,
     skillRoot
   });
 
   assert.ok(plan.operations.some((op) => op.target.endsWith('.codex/skills/cavemanizer/SKILL.md')));
+  assert.ok(plan.operations.some((op) => op.target.endsWith('.claude/skills/cavemanizer/SKILL.md')));
   assert.equal(plan.operations.length, 2);
   assert.ok(plan.operations.every((op) => op.skill === 'cavemanizer'));
 });

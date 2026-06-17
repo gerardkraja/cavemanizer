@@ -1,7 +1,6 @@
 import { buildIrPrompt, fixtureExtractIr, normalizeIr } from './ir.js';
 
 const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
-const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-5.2';
 
 export function createProvider(name, options = {}) {
   if (name === 'fixture') {
@@ -15,10 +14,6 @@ export function createProvider(name, options = {}) {
 
   if (name === 'openai') {
     return createOpenAiProvider(options);
-  }
-
-  if (name === 'openrouter') {
-    return createOpenRouterProvider(options);
   }
 
   throw new Error(`Unknown provider: ${name}`);
@@ -60,51 +55,6 @@ function createOpenAiProvider(options = {}) {
       }
 
       return normalizeIr(parseJsonFromText(extractOpenAiText(await response.json())), extractOptions);
-    }
-  };
-}
-
-function createOpenRouterProvider(options = {}) {
-  const apiKey = options.apiKey ?? process.env.OPENROUTER_API_KEY;
-  const model = options.model ?? process.env.CAVEMANIZER_MODEL ?? DEFAULT_OPENROUTER_MODEL;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY is required for --provider openrouter');
-  }
-
-  return {
-    name: 'openrouter',
-    async extractIr(source, extractOptions = {}) {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://github.com/gerardkraja/cavemanizer',
-          'X-Title': 'cavemanizer'
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: buildIrPrompt(source, extractOptions) }
-          ],
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'instruction_ir',
-              strict: true,
-              schema: IR_JSON_SCHEMA
-            }
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenRouter request failed (${response.status}): ${await response.text()}`);
-      }
-
-      const body = await response.json();
-      return normalizeIr(parseJsonFromText(body.choices?.[0]?.message?.content ?? ''), extractOptions);
     }
   };
 }

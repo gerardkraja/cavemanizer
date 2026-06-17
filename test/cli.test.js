@@ -75,3 +75,41 @@ Use when the CLI needs to reject obsolete generated files. You MUST preserve
   assert.notEqual(check.status, 0);
   assert.match(`${check.stdout}\n${check.stderr}`, /obsolete generated output/);
 });
+
+test('CLI exposes a minimal command surface', () => {
+  const help = runCli(['--help']);
+
+  assert.equal(help.status, 0, help.stderr || help.stdout);
+  assert.match(help.stdout, /sync/);
+  assert.match(help.stdout, /mark-compact/);
+  assert.doesNotMatch(help.stdout, /\bdiff\b/);
+  assert.doesNotMatch(help.stdout, /\bpreprocess\b/);
+  assert.doesNotMatch(help.stdout, /\blist-agents\b/);
+  assert.doesNotMatch(help.stdout, /\bgeneric\b/);
+  assert.doesNotMatch(help.stdout, /openrouter/);
+});
+
+test('CLI marks and unmarks compact skills', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'cavemanizer-mark-'));
+  const skillPath = path.join(root, 'SKILL.md');
+  await writeFile(skillPath, `---
+name: markable
+description: A skill that can be marked compact.
+---
+
+# Markable
+`);
+
+  const mark = runCli(['mark-compact', skillPath]);
+  assert.equal(mark.status, 0, mark.stderr || mark.stdout);
+  assert.match(await readFile(skillPath, 'utf8'), /cavemanizer: compact/);
+
+  const markAgain = runCli(['mark-compact', skillPath]);
+  assert.equal(markAgain.status, 0, markAgain.stderr || markAgain.stdout);
+  const marked = await readFile(skillPath, 'utf8');
+  assert.equal((marked.match(/cavemanizer: compact/g) ?? []).length, 1);
+
+  const unmark = runCli(['unmark-compact', skillPath]);
+  assert.equal(unmark.status, 0, unmark.stderr || unmark.stdout);
+  assert.doesNotMatch(await readFile(skillPath, 'utf8'), /cavemanizer: compact/);
+});

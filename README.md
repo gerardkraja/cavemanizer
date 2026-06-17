@@ -1,73 +1,56 @@
 # cavemanizer
 
-LLM-backed compressor for agent skills and always-loaded context.
+`cavemanizer` compresses agent skills and other always-loaded instruction files
+into smaller machine-facing versions.
 
-`cavemanizer` turns verbose skill/rule/memory files into smaller machine-facing
-variants while preserving behavior. It can run as:
+The goal is simple: keep writing normal readable skills, but let the agent load a
+compact generated copy when that saves context. Human conversation can stay
+normal. The compact style is mainly useful for reusable files the model reads
+over and over.
 
-- an installable agent skill, using your existing agentic CLI subscription;
-- a local CLI compressor, using OpenAI/OpenRouter API keys;
-- a fixture-based test/check tool for committed examples and CI.
+## What It Does
 
-The main workflow is:
+- Installs the Cavemanizer skill into Codex or Claude skill directories.
+- Scans installed skills and generates compact copies in a shadow directory.
+- Activates compact copies under the same skill names, so agents call them
+  automatically.
+- Restores the original readable skills when you want to go back.
+- Lets skill creators mark a `SKILL.md` as already compact so it is adopted
+  without recompression.
+- Provides deterministic fixture checks for tests and OpenAI-backed compression
+  for real output.
 
-1. Keep writing normal human-readable skills in the usual agent skill directory.
-2. Run `cavemanizer sync` to generate compact copies into a shadow directory.
-3. Use `cavemanizer sync --check` in CI or before deploy to catch stale generated
-   skills.
-4. Run `cavemanizer activate` or `sync --activate` to make the agent load the
-   compact versions by the same skill names.
+## Quick Start
 
-## Why
-
-Agent skills and rules are often loaded repeatedly. If those files are verbose,
-they consume context before the current task starts. Compressing reusable
-instructions is lower-friction than forcing every human-facing answer into a
-terse style: conversation style and reusable-instruction compression are separate
-knobs.
-
-## Install Skills Locally
-
-Preview:
+Install the skill:
 
 ```bash
-node bin/cavemanizer.js install --dry-run --agent codex
+./install.sh --agent codex
 ```
 
-Install:
-
-```bash
-node bin/cavemanizer.js install --agent codex
-```
-
-Supported install targets in v1:
-
-- `codex` -> `~/.codex/skills`
-- `claude` -> `~/.claude/skills`
-- `generic` -> `~/.local/share/cavemanizer/skills`
-
-The installer copies `skills/cavemanizer/SKILL.md`.
-
-Install, generate compact copies, and immediately activate them:
+Install, compress installed Claude skills, and activate the compact versions:
 
 ```bash
 OPENAI_API_KEY=... ./install.sh --agent claude --sync --activate --provider openai --budget 800
 ```
 
-The sync step writes generated skills to a shadow root by default:
+After activation, call skills exactly as before. If Claude Code previously loaded
+`~/.claude/skills/brainstorming/SKILL.md`, it still loads `brainstorming`; the
+file is just the compact generated version. Originals are backed up under:
 
 ```text
-~/.cavemanizer/<agent>/skills
+~/.cavemanizer/<agent>/backups
 ```
 
-During sync, Cavemanizer does not overwrite the readable source skills in
-`~/.claude/skills` or `~/.codex/skills`. During activation, it replaces each
-live `SKILL.md` with the compact generated version and stores the original under
-`~/.cavemanizer/<agent>/backups`.
+Restore originals:
+
+```bash
+node bin/cavemanizer.js restore --agent claude
+```
 
 ## Skill Sync
 
-Sync installed Claude skills into compact generated copies:
+Generate compact copies without touching live skills:
 
 ```bash
 OPENAI_API_KEY=... node bin/cavemanizer.js sync \
@@ -76,7 +59,22 @@ OPENAI_API_KEY=... node bin/cavemanizer.js sync \
   --budget 800
 ```
 
-Check whether generated copies are current:
+Default output:
+
+```text
+~/.cavemanizer/<agent>/skills
+```
+
+`sync` tracks source digests in `.cavemanizer-manifest.json`.
+
+- New source skill: generate a compact copy.
+- Changed source skill: regenerate it.
+- Removed source skill: remove the generated copy.
+- Unchanged source skill: skip it.
+- Activated source skill: use the backed-up original as the source, so compact
+  files do not get repeatedly recompressed.
+
+Check for stale generated skills in CI or before deployment:
 
 ```bash
 OPENAI_API_KEY=... node bin/cavemanizer.js sync \
@@ -85,15 +83,6 @@ OPENAI_API_KEY=... node bin/cavemanizer.js sync \
   --budget 800 \
   --check
 ```
-
-`sync` tracks source digests in `.cavemanizer-manifest.json`.
-
-- New source skill: generate `<shadow-root>/<skill-id>/SKILL.md`.
-- Changed source skill: regenerate it.
-- Removed source skill: remove the generated copy.
-- Unchanged source skill: skip it.
-
-`preprocess` is an alias for `sync`.
 
 Generate and activate in one step:
 
@@ -105,99 +94,36 @@ OPENAI_API_KEY=... node bin/cavemanizer.js sync \
   --activate
 ```
 
-`sync` also prints aggregate estimated-token savings:
+## Compact Markers
 
-```text
-claude sync -> ~/.cavemanizer/claude/skills
-  generate brainstorming
-  skip gsd-debug
-  saved 8762 est tokens (13871 -> 5109, 63.2% bytes)
-```
-
-Generated skill layout:
-
-```text
-~/.cavemanizer/claude/skills/
-  .cavemanizer-manifest.json
-  brainstorming/
-    SKILL.md
-    ir.json
-    report.json
-```
-
-`SKILL.md` is the compact file. `ir.json` and `report.json` are for review,
-debugging, and CI checks.
-
-## Calling Activated Skills
-
-After activation, you call skills exactly the same way as before. The skill id
-and directory name do not change. For example, if Claude Code previously loaded:
-
-```text
-~/.claude/skills/brainstorming/SKILL.md
-```
-
-then activation replaces that file with the compact generated version. Claude
-Code still sees the same `brainstorming` skill, but the loaded content is smaller.
-
-Activation records a manifest:
-
-```text
-~/.cavemanizer/<agent>/activation-manifest.json
-```
-
-Restore originals:
+If a skill is already authored in compact machine-facing form, mark it:
 
 ```bash
-node bin/cavemanizer.js restore --agent claude
+node bin/cavemanizer.js mark-compact path/to/SKILL.md
 ```
 
-Future `sync` runs detect activated skills and use the backed-up original as the
-source, so the compact active file does not get repeatedly recompressed.
+Remove the marker:
 
-## Already Compact Skills
+```bash
+node bin/cavemanizer.js unmark-compact path/to/SKILL.md
+```
 
-Skill creators can opt out of recompression by marking a skill as already compact:
+Marked skills are copied into the generated tree as-is and report zero
+compression savings. This gives skill creators a low-friction way to publish
+their own compact skills while still fitting the Cavemanizer sync flow.
+
+Accepted metadata:
 
 ```yaml
----
-name: my-skill
-description: Dense machine-facing skill.
 cavemanizer: compact
----
 ```
 
-Supported markers:
+Also accepted: `cavemanizer: skip`, `cavemanized: true`, and
+`<!-- cavemanizer: compact -->`.
 
-- `cavemanizer: compact`
-- `cavemanizer: skip`
-- `cavemanized: true`
-- `<!-- cavemanizer: compact -->`
+## Manual Compression
 
-Cavemanizer adopts those skills as-is into the generated tree and records zero
-compression savings. This is useful for skill authors who already ship a
-machine-facing `SKILL.md`.
-
-For a skill repo, a simple release flow is:
-
-```bash
-node bin/cavemanizer.js sync --agent claude --provider openai --budget 800
-node bin/cavemanizer.js sync --agent claude --provider openai --budget 800 --check
-```
-
-Use `--check` in CI or a predeploy hook so generated compact skills cannot drift
-from their readable source.
-
-## CLI Compression
-
-Fixture provider, deterministic and API-free:
-
-```bash
-npm run generate:examples
-npm run check
-```
-
-OpenAI:
+Compress a skill or fixture directory:
 
 ```bash
 OPENAI_API_KEY=... node bin/cavemanizer.js compress skills \
@@ -206,13 +132,11 @@ OPENAI_API_KEY=... node bin/cavemanizer.js compress skills \
   --mode caveman
 ```
 
-OpenRouter:
+Deterministic fixture provider, useful for tests:
 
 ```bash
-OPENROUTER_API_KEY=... node bin/cavemanizer.js compress skills \
-  --out-dir dist/openrouter \
-  --provider openrouter \
-  --mode caveman
+npm run generate:examples
+npm run check
 ```
 
 Outputs:
@@ -221,36 +145,54 @@ Outputs:
 - `ir.json`
 - `report.json`
 
-The validator preserves frontmatter, code blocks, inline code, URLs, paths, env
-vars, and common plain shell commands such as `npm test -- --runInBand`,
-`git status --short`, and `node bin/cavemanizer.js sync --agent claude --check`.
+The compressor uses an Instruction-IR step before rendering compact Markdown. It
+tries to preserve frontmatter, code blocks, inline code, URLs, paths, env vars,
+common commands, and hard `MUST` / `NEVER` rules. See
+[docs/compression.md](docs/compression.md).
 
-## Fixture Pack
+## Benchmarks
 
-`examples/fixtures` is the generic test corpus:
+These are lightweight estimated-token counts from local real-skill smoke runs,
+not provider tokenizer measurements.
 
-- `simple-workflow`: baseline workflow compression.
-- `hard-gate`: approval gates and `MUST NOT` preservation.
-- `protected-content`: commands, URLs, env vars, paths, and code blocks.
-- `examples-heavy`: many examples collapsed into compact format guidance.
-- `cross-file`: references to extra files and relative paths.
+| Set | Skills | Source est tokens | Compact est tokens | Saved |
+|---|---:|---:|---:|---:|
+| Superpowers session | 8 | 13,871 | 5,109 | 63.2% |
+| GSD session | 10 | 5,746 | 3,196 | 44.1% |
+| Mixed workflow set, excluding ROS2 outlier | 9 | 24,079 | 9,453 | 60.7% |
 
-Generated outputs live in `examples/generated`.
+ROS2 was omitted from the headline mixed figure because it is dense,
+reference-heavy, and very niche compared with typical workflow skills. The full
+notes are in [docs/real-world-evals.md](docs/real-world-evals.md).
 
-## Real-World Evals
+## Upstream Caveman
 
-List local Codex/Claude skills:
+This repo does not vendor or rewrite upstream Caveman. Use the real Caveman skill
+when you want Caveman-mode communication or an agent-session comparison:
 
 ```bash
-node bin/cavemanizer.js list-real-skills
+curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash
 ```
 
-For Caveman-backed comparisons, install/load the actual Caveman skill first and
-run the comparison in an agent session that explicitly uses it. See
-[docs/real-world-evals.md](docs/real-world-evals.md).
+Cavemanizer's everyday use case is narrower: compact files that are loaded by an
+agent, not every sentence you write to the agent.
 
-Upstream Caveman is not vendored or rewritten here. Use it directly when you want
-Caveman-mode communication or an external Caveman-backed compression comparison.
+## Commands
+
+```text
+cavemanizer
+
+Commands:
+  compress <file-or-fixtures-dir> --out-dir <dir> [--provider fixture|openai] [--mode caveman]
+  check <file-or-fixtures-dir> --out-dir <dir> [--provider fixture|openai] [--mode caveman]
+  install [repo-root] [--agent codex] [--agent claude] [--sync] [--activate] [--provider fixture|openai] [--dry-run]
+  sync [--agent claude] [--out-dir <dir>] [--provider fixture|openai] [--activate] [--check] [--dry-run]
+  activate [--agent claude] [--out-dir <dir>] [--dry-run]
+  restore [--agent claude] [--dry-run]
+  mark-compact <SKILL.md>
+  unmark-compact <SKILL.md>
+  list-real-skills [--home <path>]
+```
 
 ## Development
 
@@ -260,5 +202,4 @@ npm run generate:examples
 npm run check
 ```
 
-The fixture provider keeps tests deterministic. Real LLM providers are available
-for manual and CI jobs with API keys.
+See [docs/github-actions.md](docs/github-actions.md) for CI examples.

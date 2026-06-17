@@ -1,6 +1,6 @@
 # GitHub Actions
 
-Use `cavemanizer check` to ensure generated compressed examples stay current.
+Use the deterministic fixture provider for repository checks:
 
 ```yaml
 name: ci
@@ -23,6 +23,12 @@ jobs:
       - run: npm run check
 ```
 
-For real LLM-backed compression in CI, provide `OPENAI_API_KEY` or
-`OPENROUTER_API_KEY` as a repository secret and run the CLI with the matching
-provider. Keep generated outputs committed so diffs are reviewable.
+For real installed skills, run `sync --check` with an LLM provider:
+
+```yaml
+- run: node bin/cavemanizer.js sync --agent claude --provider openai --budget 800 --check
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Keep generated outputs reviewable when a project chooses to commit them.

@@ -22,8 +22,20 @@ forms such as `npm test -- --runInBand` and `git status --short`.
 
 ## Creator Compact Marker
 
-If a skill is already written in compact machine-facing form, the creator can
-mark it so Cavemanizer adopts it without recompression:
+If a skill is already written in compact machine-facing form, mark it so
+Cavemanizer adopts it without recompression:
+
+```bash
+node bin/cavemanizer.js mark-compact path/to/SKILL.md
+```
+
+To remove that marker:
+
+```bash
+node bin/cavemanizer.js unmark-compact path/to/SKILL.md
+```
+
+The command writes this metadata:
 
 ```yaml
 cavemanizer: compact

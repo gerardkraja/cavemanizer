@@ -70,6 +70,12 @@ Report warnings instead of hiding uncertain compression.
 
 If a skill is already authored in compact machine-facing form, mark it with:
 
+```bash
+node bin/cavemanizer.js mark-compact path/to/SKILL.md
+```
+
+This adds:
+
 ```yaml
 cavemanizer: compact
 ```

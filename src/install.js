@@ -3,13 +3,8 @@ import path from 'node:path';
 
 const AGENTS = {
   codex: (home) => path.join(home, '.codex', 'skills'),
-  claude: (home) => path.join(home, '.claude', 'skills'),
-  generic: (home) => path.join(home, '.local', 'share', 'cavemanizer', 'skills')
+  claude: (home) => path.join(home, '.claude', 'skills')
 };
-
-export function supportedAgents() {
-  return Object.keys(AGENTS);
-}
 
 export async function planInstall({ agents = ['codex'], home = process.env.HOME, skillRoot = path.resolve('skills') } = {}) {
   if (!home) throw new Error('home is required');

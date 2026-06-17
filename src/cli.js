@@ -1,8 +1,10 @@
 import path from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
 
 import { activateCavemanizedSkills, restoreActivatedSkills } from './activation.js';
 import { checkPath, compressPath } from './compress.js';
-import { installSkills, planInstall, supportedAgents } from './install.js';
+import { installSkills, planInstall } from './install.js';
+import { markCompactSource, unmarkCompactSource } from './markers.js';
 import { discoverRealSkills } from './realSkills.js';
 import { syncCavemanizedSkills } from './sync.js';
 
@@ -17,16 +19,13 @@ export async function main(argv = process.argv.slice(2), io = process) {
 
     if (command === 'compress') return await compressCommand(rest, io);
     if (command === 'check') return await checkCommand(rest, io);
-    if (command === 'diff') return await diffCommand(rest, io);
     if (command === 'install') return await installCommand(rest, io);
-    if (command === 'sync' || command === 'preprocess') return await syncCommand(rest, io);
+    if (command === 'sync') return await syncCommand(rest, io);
     if (command === 'activate') return await activateCommand(rest, io);
     if (command === 'restore') return await restoreCommand(rest, io);
+    if (command === 'mark-compact') return await compactMarkerCommand(rest, io, true);
+    if (command === 'unmark-compact') return await compactMarkerCommand(rest, io, false);
     if (command === 'list-real-skills') return await listRealSkillsCommand(rest, io);
-    if (command === 'list-agents') {
-      io.stdout.write(`${supportedAgents().join('\n')}\n`);
-      return 0;
-    }
 
     io.stderr.write(`Unknown command: ${command}\n\n${helpText()}`);
     return 2;
@@ -75,24 +74,6 @@ async function checkCommand(args, io) {
     return 1;
   }
   io.stdout.write('generated outputs current\n');
-  return 0;
-}
-
-async function diffCommand(args, io) {
-  const options = parseOptions(args);
-  const input = options.positionals[0];
-  if (!input) throw new Error('diff requires an input file or fixture directory');
-  const results = await compressPath(path.resolve(input), {
-    outDir: options.outDir ? path.resolve(options.outDir) : path.resolve('.cavemanizer-diff'),
-    providerName: options.provider ?? 'fixture',
-    providerOptions: { model: options.model, apiKey: options.apiKey },
-    modes: modesFromOption(options.mode),
-    budget: options.budget ? Number(options.budget) : null
-  });
-
-  for (const result of results) {
-    io.stdout.write(formatSummary(result));
-  }
   return 0;
 }
 
@@ -159,6 +140,19 @@ async function restoreCommand(args, io) {
     if (!result.ok) ok = false;
   }
   return ok ? 0 : 1;
+}
+
+async function compactMarkerCommand(args, io, compact) {
+  const options = parseOptions(args);
+  const input = options.positionals[0];
+  const command = compact ? 'mark-compact' : 'unmark-compact';
+  if (!input) throw new Error(`${command} requires a SKILL.md path`);
+  const file = path.resolve(input);
+  const source = await readFile(file, 'utf8');
+  const next = compact ? markCompactSource(source) : unmarkCompactSource(source);
+  await writeFile(file, next);
+  io.stdout.write(`${compact ? 'marked compact' : 'removed compact marker'} ${file}\n`);
+  return 0;
 }
 
 async function listRealSkillsCommand(args, io) {
@@ -319,16 +313,15 @@ function helpText() {
   return `cavemanizer
 
 Commands:
-  compress <file-or-fixtures-dir> --out-dir <dir> [--provider fixture|openai|openrouter] [--mode caveman]
-  check <file-or-fixtures-dir> --out-dir <dir> [--provider fixture|openai|openrouter] [--mode caveman]
-  diff <file-or-fixtures-dir> [--provider fixture|openai|openrouter]
-  install [repo-root] [--agent codex] [--agent claude] [--agent generic] [--sync] [--activate] [--provider fixture|openai|openrouter] [--dry-run]
-  sync [--agent claude] [--out-dir <dir>] [--provider fixture|openai|openrouter] [--activate] [--check] [--dry-run]
-  preprocess [same options as sync]
+  compress <file-or-fixtures-dir> --out-dir <dir> [--provider fixture|openai] [--mode caveman]
+  check <file-or-fixtures-dir> --out-dir <dir> [--provider fixture|openai] [--mode caveman]
+  install [repo-root] [--agent codex] [--agent claude] [--sync] [--activate] [--provider fixture|openai] [--dry-run]
+  sync [--agent claude] [--out-dir <dir>] [--provider fixture|openai] [--activate] [--check] [--dry-run]
   activate [--agent claude] [--out-dir <dir>] [--dry-run]
   restore [--agent claude] [--dry-run]
+  mark-compact <SKILL.md>
+  unmark-compact <SKILL.md>
   list-real-skills [--home <path>]
-  list-agents
 `;
 }
 

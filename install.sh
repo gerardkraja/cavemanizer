@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help|-h)
-      echo "Usage: ./install.sh [--agent codex|claude|generic] [--sync] [--activate] [--provider fixture|openai|openrouter] [--model name] [--budget tokens] [--out-dir dir] [--dry-run]"
+      echo "Usage: ./install.sh [--agent codex|claude] [--sync] [--activate] [--provider fixture|openai] [--model name] [--budget tokens] [--out-dir dir] [--dry-run]"
       exit 0
       ;;
     *)
